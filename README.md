@@ -1,68 +1,105 @@
 # Ai-remover
 
-**Professional toolkit for stripping AI provenance signals and disrupting common invisible watermarks from images.**
+**Professional toolkit for removing AI provenance signals and the hardest invisible watermarks (including SynthID-class marks).**
 
 > **Educational / Research / Authorized use only.**  
-> This project helps you clean metadata and apply mild signal-disruption techniques.  
-> Robust watermarks such as Google SynthID are intentionally designed to survive simple processing. Full removal of strong neural watermarks usually requires GPU-based diffusion regeneration (see related open-source projects).
+> Use only on images you own or have explicit permission to process.
 
-## Features
+## Two Levels of Removal
 
-- Strip AI-related metadata (EXIF, XMP, PNG text chunks, common "Made with AI" tags)
-- Mild adversarial processing modes that can reduce detectability of weaker watermarks
-- Clean CLI interface + Python API
-- Includes a ready-to-use professional prompt for Claude, ChatGPT, Grok, Gemini, etc.
-- Lightweight – no large model downloads required for basic mode
+| Level | Method | GPU | Best for |
+|-------|--------|-----|----------|
+| **Basic** | Metadata stripping + mild signal disruption | No | Fast cleanup, weaker marks |
+| **Robust** (recommended) | Diffusion regeneration (img2img + ControlNet) | NVIDIA GPU strongly recommended | Hardest / most robust watermarks (SynthID, StableSignature, Tree-Ring, etc.) |
 
-## Installation
+---
+
+## 1. Basic Mode (lightweight)
 
 ```bash
 pip install -r requirements.txt
+python remover.py input.png -o cleaned.png --mode medium
 ```
 
-## Quick Start
+Modes: `none` | `light` | `medium`
+
+---
+
+## 2. Robust Mode – Hardest Watermarks (Docker recommended)
+
+This is the mode you want for the strongest current invisible watermarks.
+
+### Option A – One-command Docker (easiest)
 
 ```bash
-# Basic metadata cleaning
-python remover.py input.png -o cleaned.png
+# Build once
+docker build -t ai-remover .
 
-# With light signal disruption
-python remover.py input.png -o cleaned.png --mode light
+# Run (NVIDIA GPU)
+docker run --gpus all --rm -v $(pwd):/data ai-remover \
+  robust /data/your_image.png -o /data/cleaned.png --strength 0.22
 
-# Medium disruption (slight noise + filter cycle)
-python remover.py input.png -o cleaned.png --mode medium
-
-# Batch process a folder
-python remover.py ./images/ --output-dir ./cleaned/ --mode light
+# CPU only (much slower)
+docker run --rm -v $(pwd):/data ai-remover \
+  robust /data/your_image.png -o /data/cleaned.png --strength 0.22 --device cpu
 ```
 
-## Modes
+### Option B – Native Ubuntu / local install
 
-| Mode     | Description                                      | Speed   | Visual change |
-|----------|--------------------------------------------------|---------|---------------|
-| `none`   | Metadata strip only                              | Fastest | None          |
-| `light`  | JPEG recompression + mild sharpening             | Fast    | Very low      |
-| `medium` | Light Gaussian noise + bilateral filter cycle    | Medium  | Low           |
+```bash
+# Requires NVIDIA drivers + CUDA toolkit
+pip install -r requirements-robust.txt
 
-## Professional Prompt (for Claude / ChatGPT / Grok / etc.)
+python robust_remover.py your_image.png -o cleaned.png --strength 0.22
+```
 
-See [`prompts/professional_prompt.txt`](prompts/professional_prompt.txt)
+### Recommended strength values (start here)
 
-Copy-paste it when you want an AI assistant to help with advanced analysis or image editing instructions.
+| Goal                        | `--strength` | Notes                          |
+|----------------------------|--------------|--------------------------------|
+| Maximum fidelity           | 0.15–0.18    | May need 2 passes on stubborn marks |
+| Balanced (recommended)     | 0.20–0.25    | Best starting point            |
+| Aggressive / stubborn marks| 0.28–0.35    | More visual change             |
 
-## Important Disclaimer
+You can also run multiple low-strength passes for better quality:
 
-- This tool does **not** claim to fully defeat production-grade watermarks such as SynthID, StableSignature, or Tree-Ring.
-- Those systems are designed to be robust against common image manipulations.
-- Use only on images you own or have explicit permission to process.
-- The authors are not responsible for misuse.
+```bash
+python robust_remover.py img.png -o tmp1.png --strength 0.18
+python robust_remover.py tmp1.png -o cleaned.png --strength 0.18
+```
 
-## Related Advanced Projects
+---
 
-For research-level invisible watermark removal (GPU required):
-- [remove-ai-watermarks](https://github.com/wiltodelta/remove-ai-watermarks)
-- [DeSynth](https://github.com/0xROOTPLS/DeSynth)
-- [reverse-SynthID](https://github.com/aloshdenny/reverse-SynthID)
+## How the Robust pipeline works
+
+1. Strips all metadata / C2PA / EXIF
+2. Extracts Canny edges for structure preservation
+3. Runs controlled diffusion regeneration (img2img + ControlNet)
+4. Reconstructs the image so the invisible watermark pattern is disrupted while keeping composition and style as close as possible
+
+This is the same core technique used by current research-grade open-source SynthID bypass tools.
+
+---
+
+## Professional Prompt
+
+Still included: [`prompts/professional_prompt.txt`](prompts/professional_prompt.txt)
+
+---
+
+## Hardware Notes
+
+- **Best experience**: NVIDIA GPU with ≥ 10–12 GB VRAM
+- First run downloads models (~6–8 GB)
+- CPU works but is very slow
+
+---
+
+## Disclaimer
+
+No open method is guaranteed against every future version of proprietary watermarks. Results vary by image content, resolution, and the exact watermark implementation. Always verify with the vendor’s detector when possible.
+
+This project is for research, education, and legitimate use on content you control.
 
 ## License
 
