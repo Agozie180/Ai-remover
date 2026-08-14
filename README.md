@@ -78,13 +78,6 @@ python robust_remover.py tmp1.png -o cleaned.png --strength 0.18
 4. Reconstructs the image so the invisible watermark pattern is disrupted while keeping composition and style as close as possible
 
 This is the same core technique used by current research-grade open-source SynthID bypass tools.
-
----
-
-## Professional Prompt
-
-Still included: [`prompts/professional_prompt.txt`](prompts/professional_prompt.txt)
-
 ---
 
 ## Hardware Notes
